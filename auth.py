@@ -1,7 +1,9 @@
 import json
 import time
 import base64
+import pprint
 import datetime
+import dateutil.parser
 from dateutil.relativedelta import relativedelta
 
 import jwt
@@ -41,21 +43,24 @@ def get_public_key(kid):
 
 
 def verify_token(token):
-    decoded_header = jwt.get_unverified_header(token)
-    public_key = get_public_key(decoded_header['kid'])
+    payload = False
+    try:
+        decoded_header = jwt.get_unverified_header(token)
+        public_key = get_public_key(decoded_header['kid'])
 
-    if not public_key:
-        return False
-    else:
-        public_key = jwt.algorithms.RSAAlgorithm.from_jwk(public_key)
-        try:
-            options = {"verify_signature": True, "verify_aud": False}
+        if not public_key:
+            return False
+        else:
+            public_key = jwt.algorithms.RSAAlgorithm.from_jwk(public_key)
+            options = {"verify_signature": True, "verify_aud": False, "verify_exp": False}
             payload = jwt.decode(token, key=public_key, algorithms=['RS256'], options=options)
             print(payload)
             return payload
-        except Exception:
-            raise
-
+    except Exception:
+        raise
+    finally:
+        return payload
+    
 def is_valid_token(id_token):
     payload = id_token.split('.')[1]
     decoded_payload = json.loads(base64.b64decode(payload))
@@ -65,9 +70,9 @@ def is_valid_token(id_token):
     elif decoded_payload['aud'] != KKO_REST_KEY:
         return False
     elif decoded_payload['exp'] < time.time():
-        return False
+        return ERR_EXP, decoded_payload
     else:
-        return True
+        return SUCCESS, decoded_payload
 
 
 def set_access_token(uid, access_token):
@@ -76,10 +81,7 @@ def set_access_token(uid, access_token):
 
 def get_access_token(uid):
     access_token = db.find_one('accessToken', {'id': uid})
-    if not access_token:
-        access_token = refresh_access_token(uid)
-        set_access_token(uid, access_token)
-    return access_token
+    return access_token['access_token'] if access_token else False
 
 
 def set_refresh_token(uid, refresh_token):
@@ -88,7 +90,16 @@ def set_refresh_token(uid, refresh_token):
 
 def get_refresh_token(uid):
     refresh_token = db.find_one('refreshToken', {'id': uid})
-    return refresh_token if refresh_token else False
+    return refresh_token['refresh_token'] if refresh_token else False
+
+
+def set_id_token(uid, id_token):
+    db.find_one_and_update('idToken', {'id': uid}, {'$set': {'id': uid, 'id_token': id_token, 'createdAt': datetime.datetime.utcnow()}}, upsert=True)
+
+
+def get_id_token(uid):
+    id_token = db.find_one('idToken', {'id': uid})
+    return id_token['id_token'] if id_token else False
 
 
 def refresh_access_token(uid):
@@ -99,19 +110,51 @@ def refresh_access_token(uid):
     parameter = {'grant_type': 'refresh_token', 'client_id': KKO_REST_KEY, 'refresh_token': refresh_token}
     response = requests.post(f'{KAKAO_AUTH}/oauth/token', data=parameter).json()
     print(response)
+    access_token = response['access_token']
+    id_token = response['id_token']
     
-    set_access_token(uid, response['access_token'])
+    set_access_token(uid, access_token)
+    set_id_token(uid, id_token)
     if 'refresh_token' in response.keys():
         set_refresh_token(uid, response['refresh_token'])
 
 
-def set_id_token(uid, id_token):
-    db.find_one_and_update('idToken', {'id': uid}, {'$set': {'id': uid, 'id_token': id_token, 'createdAt': datetime.datetime.utcnow()}}, upsert=True)
+def refresh_id_token(uid):
+    refresh_access_token(uid)
+    id_token = get_id_token(uid)
 
+    return id_token if id_token else False
 
+def get_kakao_user(uid):
+    access_token = get_access_token(uid)
+    print(access_token)
+    header = {'Authorization': f'Bearer {access_token}'}
+    response = requests.post(f'{KAKAO_API}/v2/user/me', headers=header).json()
+    print(response)
 
-def signup(id_token):
-    pass
+    user_info = dict()
+    user_info['id'] = uid
+    user_info['connected_at'] = dateutil.parser.isoparse(response['connected_at'])
+    user_info['nickname'] = response['properties']['nickname']
+    user_info['email'] = response['kakao_account']['email']
+    if response['kakao_account']['has_age_range']:
+        user_info['age_range'] = response['kakao_account']['age_range']
+    if response['kakao_account']['has_birthday']:
+        user_info['birthday'] = response['kakao_account']['birthday']
+    if response['kakao_account']['has_gender']:
+        user_info['gender'] = response['kakao_account']['gender']
+
+    return user_info
+    
+
+def set_user_info(uid, user_info):
+    db.find_one_and_update('users', {'id': uid}, {'$set': user_info}, upsert=True)
+    
+
+def signup(uid, id_token):
+    set_id_token(uid, id_token)
+    user_info = get_kakao_user(uid)
+    set_user_info(uid, user_info)
 
 
 @Auth.route('/kakao')
@@ -120,18 +163,39 @@ class GetAuthorization(Resource):
     def get(self):
         try:
             token = get_kakao_token(request.args['code'])
-            id_token = verify_token(token['id_token'])
+            verified_token = verify_token(token['id_token'])
             if not token:
                 return abort(400, 'Token is not issued.')
             elif not is_valid_token(token['id_token']):
                 return abort(400, 'Token is invalid.')
-            elif not id_token:
+            elif not verified_token:
                 return abort(401, 'Failed to verify your token.')
             else:
-                set_access_token(id_token['sub'], token['access_token'])
-                set_refresh_token(id_token['sub'], token['refresh_token'])
-                signup(id_token)
+                uid = verified_token['sub']
+                set_access_token(uid, token['access_token'])
+                set_refresh_token(uid, token['refresh_token'])
+                signup(uid, token['id_token'])
                 return {'Authorization': f'Bearer {token["id_token"]}'}, 200
         except Exception:
             raise
+
+
+@Auth.route('/login')
+class Login(Resource):
+    def get(self):
+        id_token = request.headers['Authorization'].split(' ')[1]
+        is_valid, payload = is_valid_token(id_token)
+        if not id_token:
+            return abort(400, 'Token is needed.')
+        elif not is_valid:
+            return abort(400, 'Token is invalid.')
+        elif is_valid == ERR_EXP:
+            id_token = refresh_id_token(payload['sub'])
+        else:
+            if verify_token(id_token):
+                return {'Authorization': f'Bearer {id_token}'}, 200
+            else:
+                return abort(400, 'Token is invalid')
+
+
 
