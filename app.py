@@ -1,9 +1,10 @@
 from flask import Flask, request
 from flask_restx import Api, Resource
-from auth import Auth
-from minting import Minting
 
 from common import *
+from auth import Auth
+from account import Account
+from minting import Minting
 
 
 app = Flask(__name__)
@@ -18,6 +19,7 @@ class Hello(Resource):
 
 api.add_namespace(Minting, '/minting')
 api.add_namespace(Auth, '/auth')
+api.add_namespace(Account, '/account')
 
 
 if __name__ == '__main__':
