@@ -1,4 +1,5 @@
-SERVICE_URL = 'http://localhost'
+SERVICE_URL = 'https://funge.kr'
+SERVICE_HOST = '0.0.0.0'
 SERVICE_PORT = 8000
 SUCCESS = 'SUCCESS'
 ERR_EXP = 'ERROR'

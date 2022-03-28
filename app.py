@@ -1,3 +1,4 @@
+import logging
 from flask import Flask, request
 from flask_restx import Api, Resource
 
@@ -5,6 +6,9 @@ from common import *
 from auth import Auth
 from account import Account
 from minting import Minting
+
+
+logging.basicConfig(filename='/var/log/funge-api.log', format='[%(asctime)s][%(levelname)s|%(filename)s:%(lineno)s] - %(message)s', level=logging.DEBUG)
 
 
 app = Flask(__name__)
@@ -23,5 +27,5 @@ api.add_namespace(Account, '/account')
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=SERVICE_PORT)
+    app.run(debug=True, host=SERVICE_HOST, port=SERVICE_PORT)
 

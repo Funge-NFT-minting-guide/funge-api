@@ -21,8 +21,9 @@ Auth = Namespace(name='Auth')
 id_token = Auth.model('ID_TOKEN', {'Authorization': fields.String()})
 
 def get_kakao_token(auth):
-    parameter = {'grant_type': 'authorization_code', 'client_id': KKO_REST_KEY, 'redirect_uri': f'{SERVICE_URL}:{SERVICE_PORT}/auth/kakao', 'code': auth}
+    parameter = {'grant_type': 'authorization_code', 'client_id': KKO_REST_KEY, 'redirect_uri': f'{SERVICE_URL}/auth/kakao', 'code': auth}
     response = requests.post(f'{KAKAO_AUTH}/oauth/token', data=parameter).json()
+    print(response)
     if 'access_token' in response:
         return response
     else:
@@ -126,14 +127,13 @@ def signup(uid, id_token):
 
 @Auth.route('/kakao')
 class GetAuthorization(Resource):
-    @Auth.marshal_with(id_token)
     def get(self):
         try:
             token = get_kakao_token(request.args['code'])
-            verified_token = verify_token(token['id_token'])
             if not token:
                 return abort(400, 'Token is not issued.')
-            elif not is_valid_token(token['id_token']):
+            verified_token = verify_token(token['id_token'])
+            if not is_valid_token(token['id_token']):
                 return abort(400, 'Token is invalid.')
             elif not verified_token:
                 return abort(401, 'Failed to verify your token.')

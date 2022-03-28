@@ -29,6 +29,8 @@ def get_public_key(kid):
 def verify_token(token):
     payload = False
     try:
+        if not token:
+            return False
         decoded_header = jwt.get_unverified_header(token)
         public_key = get_public_key(decoded_header['kid'])
 
