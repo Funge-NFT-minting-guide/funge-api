@@ -116,13 +116,13 @@ class GetAuthorization(Resource):
         try:
             token = get_kakao_token(request.args['code'])
         except KeyError:
-            return abort(400, 'Code is required.')
+            return abort(*ERR_CODE_REQUIRED)
         if not token:
-            return abort(400, 'User cancelled login.')
+            return abort(*ERR_USER_CANCELLED)
         
         verified_token = verify_token(token['id_token'])
         if verified_token == INVALID_TOKEN:
-            return abort(401, 'Failed to verify your token.')
+            return abort(*ERR_TOKEN_INVALID)
         else:
             uid = verified_token['sub']
             set_access_token(uid, token['access_token'])
@@ -137,17 +137,17 @@ class Refresh(Resource):
         try:
             _type, id_token = request.headers['Authorization'].split(' ')
             if _type != 'Bearer':
-                return abort(400, f'{_type} type is not allowed.')
+                return abort(*ERR_NOT_ALLOWED_TYPE(_type))
             if not id_token:
                 raise KeyError
         except KeyError:
-            return abort(400, 'Token is needed.')
+            return abort(*ERR_TOKEN_NEEDED)
         except IndexError:
-            return abort(400, 'Token is not valid.')
+            return abort(*ERR_TOKEN_INVALID)
 
         if not authenticate_user(id_token):
-            return abort(401, 'Unauthorized.')
+            return abort(*ERR_UNAUTHORIZED)
 
-        verified_token = verify_token(id_token)
+        verified_token = verify_token(id_token, exp=False)
         id_token = refresh_id_token(verified_token['sub'])
         return {'Authorization': f'Bearer {id_token}'}, 200

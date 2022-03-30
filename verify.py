@@ -22,7 +22,7 @@ def get_public_key(kid):
      return list(filter(lambda x: x['kid'] == kid, keys))[0]
 
 
-def verify_token(id_token):
+def verify_token(id_token, exp=True):
     try:
         decoded_header = jwt.get_unverified_header(id_token)
         public_key = get_public_key(decoded_header['kid'])
@@ -31,7 +31,7 @@ def verify_token(id_token):
             return False
         else:
             public_key = jwt.algorithms.RSAAlgorithm.from_jwk(public_key)
-            verify_what = {'verify_signature': True, 'verify_aud': True, 'verify_iss': True, 'verify_exp': True}
+            verify_what = {'verify_signature': True, 'verify_aud': True, 'verify_iss': True, 'verify_exp': exp}
             payload = jwt.decode(id_token, key=public_key, algorithms=['RS256'], audience=KKO_REST_KEY, issuer=KAKAO_AUTH, options=verify_what, verify=True)
             return payload
     except jwt.exceptions.ExpiredSignatureError:
