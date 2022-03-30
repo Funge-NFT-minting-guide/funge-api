@@ -1,9 +1,5 @@
 import json
-import time
-import base64
-import pprint
 import datetime
-import dateutil.parser
 from dateutil.relativedelta import relativedelta
 
 import jwt
@@ -26,36 +22,34 @@ def get_public_key(kid):
      return list(filter(lambda x: x['kid'] == kid, keys))[0]
 
 
-def verify_token(token):
-    payload = False
+def verify_token(id_token):
     try:
-        if not token:
-            return False
-        decoded_header = jwt.get_unverified_header(token)
+        decoded_header = jwt.get_unverified_header(id_token)
         public_key = get_public_key(decoded_header['kid'])
 
         if not public_key:
             return False
         else:
             public_key = jwt.algorithms.RSAAlgorithm.from_jwk(public_key)
-            options = {"verify_signature": True, "verify_aud": False, "verify_exp": False}
-            payload = jwt.decode(token, key=public_key, algorithms=['RS256'], options=options)
-            print(payload)
+            verify_what = {'verify_signature': True, 'verify_aud': True, 'verify_iss': True, 'verify_exp': True}
+            payload = jwt.decode(id_token, key=public_key, algorithms=['RS256'], audience=KKO_REST_KEY, issuer=KAKAO_AUTH, options=verify_what, verify=True)
             return payload
+    except jwt.exceptions.ExpiredSignatureError:
+        return EXPIRED_TOKEN
     except Exception:
-        raise
-    finally:
-        return payload
+        return INVALID_TOKEN
+
 
 
 def get_id_token(uid):
     id_token = db.find_one('idToken', {'id': uid})
     return id_token['id_token'] if id_token else False
+
+
+def get_auth_id_token(id_token):
+    id_token = db.find_one('authIdToken', {'id_token': id_token})
+    return id_token['id_token'] if id_token else False
     
 
 def authenticate_user(id_token):
-    verified_token = verify_token(id_token)
-    if not verified_token:
-        return False
-    if id_token == get_id_token(verified_token['sub']):
-        return verified_token
+    return True if id_token == get_auth_id_token(id_token) else False

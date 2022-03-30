@@ -1,7 +1,7 @@
 import json
 import time
 import base64
-import pprint
+import binascii
 import datetime
 import dateutil.parser
 from dateutil.relativedelta import relativedelta
@@ -13,7 +13,7 @@ from flask_restx import Api, Resource, Namespace, reqparse, fields
 from common import *
 from env.kakao import *
 from db_connect import FungeDAO
-from verify import verify_token
+from verify import verify_token, authenticate_user
 
 db = FungeDAO()
 Auth = Namespace(name='Auth')
@@ -23,26 +23,10 @@ id_token = Auth.model('ID_TOKEN', {'Authorization': fields.String()})
 def get_kakao_token(auth):
     parameter = {'grant_type': 'authorization_code', 'client_id': KKO_REST_KEY, 'redirect_uri': f'{SERVICE_URL}/auth/kakao', 'code': auth}
     response = requests.post(f'{KAKAO_AUTH}/oauth/token', data=parameter).json()
-    print(response)
     if 'access_token' in response:
         return response
     else:
-        print(response)
         return False
-
-
-def is_valid_token(id_token):
-    payload = id_token.split('.')[1]
-    decoded_payload = json.loads(base64.b64decode(payload))
-
-    if decoded_payload['iss'] != KAKAO_AUTH:
-        return False
-    elif decoded_payload['aud'] != KKO_REST_KEY:
-        return False
-    elif decoded_payload['exp'] < time.time():
-        return ERR_EXP, decoded_payload
-    else:
-        return SUCCESS, decoded_payload
 
 
 def set_access_token(uid, access_token):
@@ -65,6 +49,7 @@ def get_refresh_token(uid):
 
 def set_id_token(uid, id_token):
     db.find_one_and_update('idToken', {'id': uid}, {'$set': {'id': uid, 'id_token': id_token, 'createdAt': datetime.datetime.utcnow()}}, upsert=True)
+    db.find_one_and_update('authIdToken', {'id': uid}, {'$set': {'id': uid, 'id_token': id_token, 'createdAt': datetime.datetime.utcnow()}}, upsert=True)
 
 
 def get_id_token(uid):
@@ -79,7 +64,6 @@ def refresh_access_token(uid):
 
     parameter = {'grant_type': 'refresh_token', 'client_id': KKO_REST_KEY, 'refresh_token': refresh_token}
     response = requests.post(f'{KAKAO_AUTH}/oauth/token', data=parameter).json()
-    print(response)
     access_token = response['access_token']
     id_token = response['id_token']
     
@@ -130,36 +114,37 @@ class GetAuthorization(Resource):
     def get(self):
         try:
             token = get_kakao_token(request.args['code'])
-            if not token:
-                return abort(400, 'Token is not issued.')
-            verified_token = verify_token(token['id_token'])
-            if not is_valid_token(token['id_token']):
-                return abort(400, 'Token is invalid.')
-            elif not verified_token:
-                return abort(401, 'Failed to verify your token.')
-            else:
-                uid = verified_token['sub']
-                set_access_token(uid, token['access_token'])
-                set_refresh_token(uid, token['refresh_token'])
-                signup(uid, token['id_token'])
-                return {'Authorization': f'Bearer {token["id_token"]}'}, 200
-        except Exception:
-            raise
+        except KeyError:
+            return abort(400, 'Code is required.')
+        if not token:
+            return abort(400, 'User cancelled login.')
+        
+        verified_token = verify_token(token['id_token'])
+        if verified_token == INVALID_TOKEN:
+            return abort(401, 'Failed to verify your token.')
+        else:
+            uid = verified_token['sub']
+            set_access_token(uid, token['access_token'])
+            set_refresh_token(uid, token['refresh_token'])
+            signup(uid, token['id_token'])
+            return {'Authorization': f'Bearer {token["id_token"]}'}, 200
 
 
-@Auth.route('/login')
+@Auth.route('/refresh')
 class Login(Resource):
     def get(self):
-        id_token = request.headers['Authorization'].split(' ')[1]
-        is_valid, payload = is_valid_token(id_token)
-        if not id_token:
+        try:
+            _type, id_token = request.headers['Authorization'].split(' ')
+            if _type != 'Bearer':
+                return abort(400, f'{_type} type is not allowed.')
+        except KeyError:
             return abort(400, 'Token is needed.')
-        elif not is_valid:
-            return abort(400, 'Token is invalid.')
-        elif is_valid == ERR_EXP:
-            id_token = refresh_id_token(payload['sub'])
-        else:
-            if verify_token(id_token):
-                return {'Authorization': f'Bearer {id_token}'}, 200
-            else:
-                return abort(400, 'Token is invalid')
+        except IndexError:
+            return abort(400, 'Token is not valid.')
+
+        if not authenticate_user(id_token):
+            return abort(401, 'Unauthorized.')
+
+        verified_token = verify_token(id_token)
+        id_token = refresh_id_token(verified_token['sub'])
+        return {'Authorization': f'Bearer {id_token}'}, 200
