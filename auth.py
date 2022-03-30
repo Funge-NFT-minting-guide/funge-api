@@ -26,6 +26,7 @@ def get_kakao_token(auth):
     if 'access_token' in response:
         return response
     else:
+        print(response)
         return False
 
 
@@ -77,7 +78,7 @@ def refresh_id_token(uid):
     refresh_access_token(uid)
     id_token = get_id_token(uid)
 
-    return id_token if id_token else False
+    return id_token
 
 def get_kakao_user(uid):
     access_token = get_access_token(uid)
@@ -131,12 +132,14 @@ class GetAuthorization(Resource):
 
 
 @Auth.route('/refresh')
-class Login(Resource):
+class Refresh(Resource):
     def get(self):
         try:
             _type, id_token = request.headers['Authorization'].split(' ')
             if _type != 'Bearer':
                 return abort(400, f'{_type} type is not allowed.')
+            if not id_token:
+                raise KeyError
         except KeyError:
             return abort(400, 'Token is needed.')
         except IndexError:

@@ -52,4 +52,5 @@ def get_auth_id_token(id_token):
     
 
 def authenticate_user(id_token):
-    return True if id_token == get_auth_id_token(id_token) else False
+    origin = get_auth_id_token(id_token)
+    return origin if origin else False
