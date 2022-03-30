@@ -1,6 +1,7 @@
 import logging
 from flask import Flask, request
 from flask_restx import Api, Resource
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from common import *
 from auth import Auth
@@ -12,6 +13,8 @@ logging.basicConfig(filename='/var/log/funge-api.log', format='[%(asctime)s][%(l
 
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
+
 api = Api(app=app, version='1.0', title='Funge-API', description="Funge: NFT minting & Guide's API Server")
 
 
@@ -21,7 +24,7 @@ class Hello(Resource):
         return {'message': "Welcome, %s!" % name}
 
 
-api.add_namespace(Minting, '/minting')
+#api.add_namespace(Minting, '/minting')
 api.add_namespace(Auth, '/auth')
 api.add_namespace(Account, '/account')
 
