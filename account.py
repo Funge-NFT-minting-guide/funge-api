@@ -99,7 +99,7 @@ class ProfileImage(Resource):
 
         file = request.files['file']
 
-        path =f"{UPLOAD_PATH}/{UPLOAD_USERS}/{uid}" 
+        path =f"{SERVICE_ROOT}/{UPLOAD_PATH}/{UPLOAD_USERS}/{uid}" 
         Path(path).mkdir(parents=True, exist_ok=True)
         extension = file.filename.rsplit('.', 1)[1]
 
@@ -107,6 +107,6 @@ class ProfileImage(Resource):
         if not profile_image_url:
             return {'message': 'Upload failed.'}, 400
 
-        db.find_one_and_update('users', {'id': uid}, {'$set': {'profile_image_url': profile_image_url}})
+        db.find_one_and_update('users', {'id': uid}, {'$set': {'profile_image_url': profile_image_url.replace(SERVICE_ROOT+'/', '')}})
         return {'message': 'Upload successful.'}, 201
-        
+

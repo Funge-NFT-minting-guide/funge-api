@@ -9,13 +9,20 @@ from account import Account
 from minting import Minting
 
 
-logging.basicConfig(filename='/var/log/funge-api.log', format='[%(asctime)s][%(levelname)s|%(filename)s:%(lineno)s] - %(message)s', level=logging.DEBUG)
+logging.basicConfig(filename='/var/log/funge-api.log', format='%(message)s', level=logging.DEBUG)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 
 api = Api(app=app, version='1.0', title='Funge-API', description="Funge: NFT minting & Guide's API Server")
+
+
+@app.before_request
+def log_request_info():
+    data = request.get_data().decode()
+    if data:
+        logging.info(data)
 
 
 @api.route('/hello/<string:name>')
@@ -35,5 +42,4 @@ api.add_namespace(Account, '/account')
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host=SERVICE_HOST, port=SERVICE_PORT)
-
+    app.run(debug=False, host=SERVICE_HOST, port=SERVICE_PORT)
