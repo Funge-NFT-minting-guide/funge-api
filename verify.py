@@ -7,10 +7,10 @@ import requests
 
 from common import *
 from env.kakao import *
-from db_connect import FungeDAO
+from db_connect import DAO
 
 
-db = FungeDAO()
+db = DAO('funge')
 
 def get_public_key(kid):
      keys = list(db.find('kkoPublicKey', {}))

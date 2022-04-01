@@ -7,11 +7,12 @@ from flask_restx import Api, Resource, Namespace, fields
 from util import *
 from common import *
 from env.kakao import *
-from db_connect import FungeDAO
+from db_connect import DAO
 from verify import verify_token, authenticate_user
 
 
-db = FungeDAO()
+db = DAO('funge')
+
 Account = Namespace(name='Account')
 
 @Account.route('/profile')
