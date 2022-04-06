@@ -52,6 +52,8 @@ parser.add_argument('offset', type=int, default=0)
 parser.add_argument('limit', type=int, default=10)
 parser.add_argument('flag', type=str, default=None, choices=('invalid', 'outdated', 'processed'))
 parser.add_argument('filter', type=str, choices=('_id', 'tweetId'))
+parser.add_argument('startdate', type=str)
+parser.add_argument('enddate', type=str)
 
 
 @Minting.route('/tweets')
@@ -80,17 +82,35 @@ class MintingTweetsOne(Resource):
         return [ret] if ret else abort(*ERR_NOT_FOUND)
 
 
+@Minting.route('/tweets/total')
+class MintingTweetsTotal(Resource):
+    def get(self):
+        req_payload = f"{TWITTY_URL}/minting/tweets/total"
+        ret = requests.get(req_payload).json()
+        return ret
+
+
+@Minting.route('/data/total')
+class MintingDataTotal(Resource):
+    def get(self):
+        args = parser.parse_args()
+        req_payload = f"{TWITTY_URL}/minting/data/total?query={args['query']}"
+        ret = requests.get(req_payload).json()
+        return ret
+        
+
+
 @Minting.route('/info')
 class MintingInfo(Resource):
     @Minting.marshal_list_with(minting_info)
     def get(self):
-        req_payload = f"{ADMIN_DEV_URL}/minting/info"
+        req_payload = f"{ADMIN_URL}/minting/info"
         ret = requests.get(req_payload).json()
         return ret
 
 
     def post(self):
-        req_payload = f"{ADMIN_DEV_URL}/minting/info"
+        req_payload = f"{ADMIN_URL}/minting/info"
         ret = requests.post(req_payload, data=request.data).json()
         return ret
 
@@ -99,12 +119,27 @@ class MintingInfo(Resource):
 class MintingInfoTid(Resource):
     def get(self, tweet_id):
         args = parser.parse_args()
-        req_payload = f"{ADMIN_DEV_URL}/minting/info/{tweet_id}?filter={args['filter']}"
+        req_payload = f"{ADMIN_URL}/minting/info/{tweet_id}?filter={args['filter']}"
         ret = requests.get(req_payload)
         print(ret.json())
         return ret.json() if ret.status_code == 200 else abort(*ERR_NOT_FOUND)
 
 
+@Minting.route('/info/total')
+class MintingInfoTotal(Resource):
+    def get(self):
+        req_payload = f"{ADMIN_URL}/minting/info/total"
+        ret = requests.get(req_payload).json()
+        return ret
+
+
+@Minting.route('/info/total/date')
+class MintingInfoTotalDate(Resource):
+    def get(self):
+        args = parser.parse_args()
+        req_payload = f"{ADMIN_URL}/minting/info/total/date?startdate={args['startdate']}&enddate={args['enddate']}"
+        ret = requests.get(req_payload).json()
+        return ret
 
 
 

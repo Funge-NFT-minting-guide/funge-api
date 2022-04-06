@@ -4,7 +4,7 @@ SERVICE_HOST = '0.0.0.0'
 SERVICE_PORT = 8000
 
 TWITTY_URL = 'http://localhost:3000'
-ADMIN_DEV_URL = 'http://localhost:9000'
+ADMIN_URL = 'http://localhost:9000'
 
 SERVICE_ROOT = 'app'
 UPLOAD_PATH = 'uploads'
