@@ -9,7 +9,7 @@ from account import Account
 from minting import Minting
 
 
-logging.basicConfig(filename='/var/log/funge-api.log', format='%(message)s', level=logging.DEBUG)
+#logging.basicConfig(filename='/var/log/funge-api.log', format='%(message)s', level=logging.DEBUG)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
@@ -36,10 +36,10 @@ def user_upload(path):
     return send_from_directory(f'uploads', path)
 
 
-#api.add_namespace(Minting, '/minting')
+api.add_namespace(Minting, '/minting')
 api.add_namespace(Auth, '/auth')
 api.add_namespace(Account, '/account')
 
 
 if __name__ == '__main__':
-    app.run(debug=False, host=SERVICE_HOST, port=SERVICE_PORT)
+    app.run(debug=True, host=SERVICE_HOST, port=SERVICE_PORT)
