@@ -1,3 +1,4 @@
+import re
 import json
 import time
 import string
@@ -7,6 +8,7 @@ import datetime
 import dateutil.parser
 from dateutil.relativedelta import relativedelta
 
+import bcrypt
 import requests
 from flask import Flask, request, jsonify, abort
 from flask_restx import Api, Resource, Namespace, reqparse, fields
@@ -21,8 +23,8 @@ from verify import verify_token, authenticate_user
 db = DAO('funge')
 Admin = Namespace(name='Admin')
 
-username_allowed = string.ascii_letters + string.digits + '_.-'
-password_allowed = username_allowed + '!@#$%^&*()+'
+username_allowed = string.ascii_letters + string.digits + '_-'
+password_allowed = username_allowed + '$@$!%*#?&'
 
 is_allowed = lambda x, y: all([c in y for c in list(x)])
 
@@ -36,9 +38,7 @@ def validate_username(username):
 
 
 def validate_password(password):
-    if not password or len(password) < 9:
-        return False
-    elif not is_allowed(password, password_allowed):
+    if not re.match(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&_-])[A-Za-z\d$@$!%*#?&_-]{9,}$', password):
         return False
     else:
         return True
@@ -51,5 +51,39 @@ class Signup(Resource):
         username = request.json.get('username')
         password = request.json.get('password')
 
-        if not validate_username(username) and not validate_password(pssword):
+        if not validate_username(username) or not validate_password(password):
             abort(400, 'username or password is invalid.')
+
+        if db.find_one('admin', {'username': username}):
+            abort(409, 'User already exists.')
+        
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+        db.insert_one('admin', {'username': username, 'password': password_hash})
+
+
+@Admin.route('/signin')
+class Signin(Resource):
+    def post(self):
+        username = request.json.get('username')
+        password = request.json.get('password')
+        
+        if not username or not password:
+            abort(400, 'username or password is incorrect.')
+
+        user = db.find_one('admin', {'username': username})
+        if not user:
+            abort(400, 'username or password is incorrect.')
+
+        print(user['password'])
+        if bcrypt.checkpw(password.encode(), user['password']):
+            return create_access_token(username)
+        else:
+            abort(400, 'username or password is incorrect.')
+
+
+@Admin.route('/protected')
+class Protected(Resource):
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        return True
