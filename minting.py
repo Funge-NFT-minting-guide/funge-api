@@ -157,6 +157,15 @@ class MintingInfoTotalDate(Resource):
         return ret
 
 
+@Minting.route('/info/test/<string:tid>')
+class MintingTest(Resource):
+    decorators = [jwt_required()]
+
+    def post(self, tid):
+        return f'putt {tid}'
+    def get(self, tid):
+        return f'hello {tid}'
+
 
 
 
