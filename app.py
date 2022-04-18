@@ -1,7 +1,8 @@
 import logging
 
-from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 from flask_restx import Api, Resource
+from flask_jwt_extended import JWTManager
 from flask import Flask, request, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -16,10 +17,13 @@ from minting import Minting
 #logging.basicConfig(filename='/var/log/funge-api.log', format='%(message)s', level=logging.DEBUG)
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 app.secret_key = SECRET_KEY
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = ADMIN_ACCESS_TOKEN_EXPIRES
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = ADMIN_REFRESH_TOKEN_EXPIRES
+app.config['JWT_COOKIE_SECURE'] = ADMIN_COOKIE_SECURE
+app.config['JWT_TOKEN_LOCATION'] = ADMIN_TOKEN_LOCATION
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 

@@ -2,6 +2,7 @@ import json
 import requests
 
 from flask import request, abort
+from flask_jwt_extended import jwt_required
 from flask_restx import Resource, Namespace, fields, reqparse
 
 from common import *
@@ -58,6 +59,7 @@ parser.add_argument('enddate', type=str)
 
 @Minting.route('/tweets')
 class MintingTweets(Resource):
+    decorators = [jwt_required()]
     @Minting.marshal_list_with(minting_tweet)
     def get(self):
         args = parser.parse_args()
@@ -68,6 +70,8 @@ class MintingTweets(Resource):
 
 @Minting.route('/tweets/<string:tid>')
 class MintingTweetsOne(Resource):
+    decorators = [jwt_required()]
+
     @Minting.marshal_with(minting_tweet)
     def get(self, tid):
         req_payload = f"{TWITTY_URL}/minting/tweets/{tid}"
@@ -84,6 +88,8 @@ class MintingTweetsOne(Resource):
 
 @Minting.route('/tweets/total')
 class MintingTweetsTotal(Resource):
+    decorators = [jwt_required()]
+
     def get(self):
         req_payload = f"{TWITTY_URL}/minting/tweets/total"
         ret = requests.get(req_payload).json()
@@ -92,6 +98,8 @@ class MintingTweetsTotal(Resource):
 
 @Minting.route('/data/total')
 class MintingDataTotal(Resource):
+    decorators = [jwt_required()]
+
     def get(self):
         args = parser.parse_args()
         req_payload = f"{TWITTY_URL}/minting/data/total?query={args['query']}"
@@ -102,7 +110,8 @@ class MintingDataTotal(Resource):
 
 @Minting.route('/info')
 class MintingInfo(Resource):
-    @Minting.marshal_list_with(minting_info)
+    decorators = [jwt_required()]
+
     def get(self):
         req_payload = f"{ADMIN_URL}/minting/info"
         ret = requests.get(req_payload).json()
@@ -117,6 +126,8 @@ class MintingInfo(Resource):
 
 @Minting.route('/info/<string:tweet_id>')
 class MintingInfoTid(Resource):
+    decorators = [jwt_required()]
+
     def get(self, tweet_id):
         args = parser.parse_args()
         req_payload = f"{ADMIN_URL}/minting/info/{tweet_id}?filter={args['filter']}"
@@ -127,6 +138,7 @@ class MintingInfoTid(Resource):
 
 @Minting.route('/info/total')
 class MintingInfoTotal(Resource):
+    decorators = [jwt_required()]
     def get(self):
         req_payload = f"{ADMIN_URL}/minting/info/total"
         ret = requests.get(req_payload).json()
@@ -135,7 +147,10 @@ class MintingInfoTotal(Resource):
 
 @Minting.route('/info/total/date')
 class MintingInfoTotalDate(Resource):
+    decorators = [jwt_required()]
+
     def get(self):
+        print(request.headers)
         args = parser.parse_args()
         req_payload = f"{ADMIN_URL}/minting/info/total/date?startdate={args['startdate']}&enddate={args['enddate']}"
         ret = requests.get(req_payload).json()

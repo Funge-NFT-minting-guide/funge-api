@@ -10,9 +10,9 @@ from dateutil.relativedelta import relativedelta
 
 import bcrypt
 import requests
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, make_response
 from flask_restx import Api, Resource, Namespace, reqparse, fields
-from flask_jwt_extended import (JWTManager, jwt_required, create_access_token, get_jwt_identity, unset_jwt_cookies, create_refresh_token)
+from flask_jwt_extended import (jwt_required, create_access_token, get_jwt_identity, set_access_cookies)
 
 from common import *
 from env.kakao import *
@@ -74,11 +74,26 @@ class Signin(Resource):
         if not user:
             abort(400, 'username or password is incorrect.')
 
-        print(user['password'])
         if bcrypt.checkpw(password.encode(), user['password']):
-            return create_access_token(username)
+            access_token = create_access_token(identity=user['username'])
+            response = jsonify({'msg': 'Login successful.'})
+            set_access_cookies(response, access_token)
+            response.set_cookie('isAuthenticated', 'true')
+            print(response)
+            return response
         else:
             abort(400, 'username or password is incorrect.')
+
+
+@Admin.route('/signout')
+class Signout(Resource):
+    @jwt_required()
+    def get(self):
+        response = make_response()
+        response.delete_cookie('access_token_cookie')
+        response.delete_cookie('isAuthenticated')
+        return response
+
 
 
 @Admin.route('/protected')
@@ -86,4 +101,4 @@ class Protected(Resource):
     @jwt_required()
     def get(self):
         current_user = get_jwt_identity()
-        return True
+        return {'msg': f'authenticated for {current_user}.'}
