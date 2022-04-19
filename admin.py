@@ -77,8 +77,8 @@ class Signin(Resource):
         if bcrypt.checkpw(password.encode(), user['password']):
             access_token = create_access_token(identity=user['username'])
             response = jsonify({'msg': 'Login successful.'})
-            set_access_cookies(response, access_token)
-            response.set_cookie('isAuthenticated', 'true')
+            set_access_cookies(response, access_token, max_age=3600)
+            response.set_cookie('isAuthenticated', 'true', max_age=3600)
             print(response)
             return response
         else:
