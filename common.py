@@ -1,10 +1,10 @@
-SERVICE_URL = 'https://funge.kr'
+SERVICE_URL = 'https://api.funge.kr'
 DEVELOP_URL = 'http://localhost:8000'
 SERVICE_HOST = '0.0.0.0'
 SERVICE_PORT = 8000
 
-TWITTY_URL = 'http://localhost:3000'
-ADMIN_URL = 'http://localhost:9000'
+TWITTY_URL = 'http://twitty.internal.api'
+ADMIN_URL = 'http://admin.internal.api'
 
 SERVICE_ROOT = 'app'
 UPLOAD_PATH = 'uploads'
