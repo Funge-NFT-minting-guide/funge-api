@@ -3,9 +3,9 @@ from pymongo import MongoClient
 from env.db_config import *
 
 
-class FungeDAO:
-    def __init__(self):
-        self.DB_NAME = 'funge'
+class DAO:
+    def __init__(self, db_name):
+        self.DB_NAME = db_name
         self.mongo = MongoClient(host=db_config['host'], port=db_config['port'], username=db_config['username'], password=db_config['password'], authSource=self.DB_NAME)[self.DB_NAME]
 
         
