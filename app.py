@@ -12,6 +12,7 @@ from auth import Auth
 from admin import Admin
 from account import Account
 from minting import Minting
+from tips import Tips
 
 
 #logging.basicConfig(filename='/var/log/funge-api.log', format='%(message)s', level=logging.DEBUG)
@@ -54,6 +55,7 @@ api.add_namespace(Auth, '/auth')
 api.add_namespace(Admin, '/admin')
 api.add_namespace(Minting, '/minting')
 api.add_namespace(Account, '/account')
+api.add_namespace(Tips, '/tips')
 
 
 if __name__ == '__main__':
